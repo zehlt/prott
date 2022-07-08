@@ -1,8 +1,8 @@
 server:
-	go run ./cmd/client
+	go run ./cmd/server
 	
 client:
-	go run ./cmd/server
+	go run ./cmd/client
 
 
 .PHONY: server client
