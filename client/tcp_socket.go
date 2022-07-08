@@ -50,7 +50,7 @@ func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
 		// TODO: not using the err maybe useful
 		defer conn.Close()
 		cont, cancel := context.WithCancel(ctx)
-		fmt.Println("connection opened", conn.Addr())
+		fmt.Println("connection opened", conn.RemoteAddr())
 
 		// send
 		go func() {

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/zehlt/prott/client"
+	"github.com/zehlt/prott/network"
 )
 
 type GameClient struct {
@@ -17,6 +18,8 @@ func NewGameClient() *GameClient {
 }
 
 func main() {
+	network.Register()
+
 	port := ":8091"
 
 	gc := NewGameClient()
@@ -26,17 +29,8 @@ func main() {
 	}
 
 	time.Sleep(time.Second * 5)
-	// gc.socket.Disconnect()
 
-	// fmt.Println("server started on port", port)
-	// gms := NewGameServer()
+	gc.socket.Disconnect()
 
-	// gms.server.Register(network.USER_CONNECTED_PACKET, gms.UserConnected)
-	// gms.server.Register(network.USER_DISCONNECTED_PACKET, gms.UserDisconnected)
-
-	// waiter, err := server.NewTcpWaiter(port)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// gms.server.Serve(context.Background(), waiter)
+	time.Sleep(time.Second * 3)
 }

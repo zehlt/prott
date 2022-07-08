@@ -16,7 +16,7 @@ type goConnection struct {
 func NewGoConnection(conn net.Conn, id int) Connection {
 	return &goConnection{
 		conn:       conn,
-		buffReader: make([]byte, 10000),
+		buffReader: make([]byte, 1000),
 		id:         id,
 	}
 }
@@ -63,8 +63,12 @@ func (c *goConnection) Write(p Packet) error {
 	return nil
 }
 
-func (c *goConnection) Addr() string {
+func (c *goConnection) LocalAddr() string {
 	return c.conn.LocalAddr().String()
+}
+
+func (c *goConnection) RemoteAddr() string {
+	return c.conn.RemoteAddr().String()
 }
 
 func (c *goConnection) Id() int {

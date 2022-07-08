@@ -19,6 +19,8 @@ func NewGameServer() *GameServer {
 }
 
 func main() {
+	network.Register()
+
 	port := ":8091"
 
 	fmt.Println("server started on port", port)
@@ -32,12 +34,4 @@ func main() {
 		panic(err)
 	}
 	gms.router.Serve(context.Background(), waiter)
-}
-
-func (g *GameServer) UserConnected(env server.Env) {
-	fmt.Println("user connected", env.Req.Id, env.Req.Addr)
-}
-
-func (g *GameServer) UserDisconnected(env server.Env) {
-	fmt.Println("user disconnected", env.Req.Id, env.Req.Addr)
 }
