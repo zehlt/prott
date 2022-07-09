@@ -14,6 +14,7 @@ type goConnection struct {
 }
 
 func NewGoConnection(conn net.Conn, id int) Connection {
+
 	return &goConnection{
 		conn:       conn,
 		buffReader: make([]byte, 1000),
@@ -22,6 +23,8 @@ func NewGoConnection(conn net.Conn, id int) Connection {
 }
 
 func (c *goConnection) Read() (Packet, error) {
+	// c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+
 	buffer := bytes.Buffer{}
 
 	// Check if the best way to do it

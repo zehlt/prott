@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/zehlt/prott/client"
@@ -23,14 +24,31 @@ func main() {
 	port := ":8091"
 
 	gc := NewGameClient()
-	_, err := gc.socket.Connect(port)
+	bus, err := gc.socket.Connect(port)
 	if err != nil {
 		panic(err)
 	}
 
-	time.Sleep(time.Second * 5)
-
-	gc.socket.Disconnect()
+	data := bus.Recv()
+	fmt.Println(data)
 
 	time.Sleep(time.Second * 3)
+
+	gc.socket.Disconnect()
+	fmt.Println("disconnected completly")
+
+	time.Sleep(time.Second * 3)
+
+	fmt.Println("retry connection")
+
+	bus, err = gc.socket.Connect(port)
+	if err != nil {
+		panic(err)
+	}
+
+	data = bus.Recv()
+	fmt.Println(data)
+
+	time.Sleep(time.Second * 3)
+
 }

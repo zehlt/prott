@@ -50,7 +50,6 @@ func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
 		// TODO: not using the err maybe useful
 		defer conn.Close()
 		cont, cancel := context.WithCancel(ctx)
-		fmt.Println("connection opened", conn.RemoteAddr())
 
 		// send
 		go func() {
@@ -61,8 +60,10 @@ func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
 			for {
 				select {
 				case packet_to_send := <-send:
+					fmt.Println("TRY TO SEND")
 					err := conn.Write(packet_to_send)
 					if err != nil {
+						fmt.Println("PASSED")
 						panic(err)
 					}
 
@@ -74,10 +75,12 @@ func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
 
 		// receive
 		for {
+
 			packet, err := conn.Read()
 			if err != nil {
 				fmt.Println("connection closed", err)
 				cancel()
+				break
 			}
 
 			recv <- packet

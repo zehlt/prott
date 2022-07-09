@@ -38,11 +38,11 @@ func (r *router) Serve(ctx context.Context, wait Waiter) {
 	time.Sleep(time.Hour * 1)
 }
 
-func (r *router) waitForConnection(ctx context.Context, wait Waiter) <-chan network.Connection {
-	connChan := make(chan network.Connection)
+func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan Status {
+	statusChan := make(chan Status)
 
 	go func() {
-		defer close(connChan)
+		defer close(statusChan)
 		fmt.Println("waiting for connection...")
 
 		for {
@@ -52,15 +52,15 @@ func (r *router) waitForConnection(ctx context.Context, wait Waiter) <-chan netw
 				panic(err)
 			}
 
-			connChan <- conn
+			statusChan <- Status{T: CONNECTION_STATUS, Connection: conn}
 		}
 
 	}()
 
-	return connChan
+	return statusChan
 }
 
-func (r *router) route(ctx context.Context, connChan <-chan network.Connection, messageChan chan Message) {
+func (r *router) route(ctx context.Context, statusChan chan Status, messageChan chan Message) {
 
 	go func() {
 		// TODO: need to remove chan when close after deconnection from player
@@ -72,16 +72,30 @@ func (r *router) route(ctx context.Context, connChan <-chan network.Connection, 
 			case <-ctx.Done():
 				break loop
 
-			case conn := <-connChan:
-				sendChannel := make(chan network.Packet)
-				connections[conn.Id()] = sendChannel
-				r.handleClientConnection(ctx, conn, sendChannel, messageChan)
+			case status := <-statusChan:
+				switch status.T {
+				case CONNECTION_STATUS:
+					sendChannel := make(chan network.Packet)
+					connections[status.Connection.Id()] = sendChannel
+					// TODO: maybe move this to his own goroutine
+					r.handleClientConnection(ctx, status.Connection, sendChannel, messageChan, statusChan)
+
+				case DISCONNECTION_STATUS:
+					send, ok := connections[status.Connection.Id()]
+					if !ok {
+						panic("try do disconnect no connection")
+					}
+					close(send)
+
+					delete(connections, status.Connection.Id())
+					fmt.Println("REMOVED STATUS CHAN")
+					fmt.Println("DISCONNECTION STATUS")
+				}
 
 			case message := <-messageChan:
 				switch message.T {
 
 				case UNICAST_MESSAGE:
-					fmt.Println("SEND UNICAST")
 					send, ok := connections[message.Receiver]
 					if !ok {
 						panic("try to send message to unknown connection router.go")
@@ -89,15 +103,12 @@ func (r *router) route(ctx context.Context, connChan <-chan network.Connection, 
 					send <- message.P
 
 				case BROADCAST_MESSAGE:
-					fmt.Println("SEND BROADCAST")
 					for key, send := range connections {
 						fmt.Println(key)
 						fmt.Println(send)
 					}
 
 				case EMIT_MESSAGE:
-					fmt.Println("SEND EMIT")
-
 					for _, send := range connections {
 						send <- message.P
 					}
@@ -108,7 +119,7 @@ func (r *router) route(ctx context.Context, connChan <-chan network.Connection, 
 
 }
 
-func (r *router) handleClientConnection(ctx context.Context, conn network.Connection, send <-chan network.Packet, messageChan chan<- Message) {
+func (r *router) handleClientConnection(ctx context.Context, conn network.Connection, send <-chan network.Packet, messageChan chan<- Message, statusChan chan<- Status) {
 	go func() {
 		defer conn.Close()
 
@@ -116,10 +127,10 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 		ctx, cancel := context.WithCancel(ctx)
 
 		// Handshake
-		err := conn.Write(network.Packet{T: network.SERVER_CONNECTION_ACCEPTED_PACKET, Data: network.ServerConnectionAcceptedPacket{}})
-		if err != nil {
-			panic(err)
-		}
+		// err := conn.Write(network.Packet{T: network.SERVER_CONNECTION_ACCEPTED_PACKET, Data: network.ServerConnectionAcceptedPacket{}})
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 		// CONNECTION
 		r.dispatch.Disp(network.USER_CONNECTED_PACKET,
@@ -145,6 +156,10 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 				}
 			}
 
+			fmt.Println("user send goroutine")
+
+			statusChan <- Status{T: DISCONNECTION_STATUS, Connection: conn}
+
 			// DISCONNECTION
 			r.dispatch.Disp(network.USER_DISCONNECTED_PACKET,
 				Env{Req: Request{
@@ -152,6 +167,7 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 					Addr:   conn.RemoteAddr(),
 					Packet: network.Packet{T: network.USER_DISCONNECTED_PACKET, Data: network.UserConnectedPacket{}},
 				}, Res: Response{}})
+
 		}()
 
 		// receive
@@ -169,5 +185,6 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 					Packet: packet,
 				}, Res: Response{}})
 		}
+		fmt.Println("user recv goroutine")
 	}()
 }
