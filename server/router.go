@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/zehlt/prott/network"
@@ -100,15 +99,11 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 					send <- message.P
 
 				case BROADCAST_MESSAGE:
-					fmt.Println("Broadcast connections", connections)
-
 					for key, send := range connections {
 						if key == message.Sender {
-							fmt.Println("ingore", key)
 							continue
 						}
 
-						fmt.Println("send to", key, message, send)
 						send <- message.P
 					}
 

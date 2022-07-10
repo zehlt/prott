@@ -29,20 +29,18 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("connection completly")
+	time.Sleep(time.Second * 2)
 
 	fmt.Println("TRY TO SEND")
 	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
-	time.Sleep(time.Second * 1)
 
-	for i := 0; i < 100; i++ {
-		data, ok := bus.TryRecv()
-		if ok {
-			fmt.Println("message", data)
-		}
+	for i := 0; i < 2; i++ {
+		data := bus.Recv()
+		fmt.Println("message", data)
 	}
 
 	// bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
-	time.Sleep(time.Millisecond * 2)
+	time.Sleep(time.Second * 3)
 
 	gc.socket.Disconnect()
 	fmt.Println("disconnected completly")
