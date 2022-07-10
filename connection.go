@@ -1,4 +1,4 @@
-package network
+package prott
 
 type Connection interface {
 	Read() (Packet, error)

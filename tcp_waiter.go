@@ -1,9 +1,7 @@
-package router
+package prott
 
 import (
 	"net"
-
-	"github.com/zehlt/prott/network"
 )
 
 func NewTcpWaiter(port string) (Waiter, error) {
@@ -20,7 +18,7 @@ type tcpWaiter struct {
 	ids int
 }
 
-func (w *tcpWaiter) Accept() (network.Connection, error) {
+func (w *tcpWaiter) Accept() (Connection, error) {
 	conn, err := w.l.Accept()
 	if err != nil {
 		return nil, err
@@ -28,7 +26,7 @@ func (w *tcpWaiter) Accept() (network.Connection, error) {
 
 	// TODO: Use UUID or entity arena
 	w.ids++
-	return network.NewGoConnection(conn, w.ids), nil
+	return NewGoConnection(conn, w.ids), nil
 }
 
 func (w *tcpWaiter) Close() error {

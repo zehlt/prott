@@ -1,11 +1,9 @@
-package socket
+package prott
 
 import (
 	"context"
 	"fmt"
 	"net"
-
-	"github.com/zehlt/prott/network"
 )
 
 type tcpSocket struct {
@@ -33,7 +31,7 @@ func (c *tcpSocket) Connect(port string) (Bus, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 
-	bus := handleServerConnection(ctx, network.NewGoConnection(conn, 0))
+	bus := handleServerConnection(ctx, NewGoConnection(conn, 0))
 	return bus, nil
 }
 
@@ -42,9 +40,9 @@ func (c *tcpSocket) Disconnect() {
 	c.isConnected = false
 }
 
-func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
-	recv := make(chan network.Packet, 1)
-	send := make(chan network.Packet, 1)
+func handleServerConnection(ctx context.Context, conn Connection) Bus {
+	recv := make(chan Packet, 1)
+	send := make(chan Packet, 1)
 
 	go func() {
 		cont, cancel := context.WithCancel(ctx)
@@ -82,5 +80,5 @@ func handleServerConnection(ctx context.Context, conn network.Connection) Bus {
 		}
 	}()
 
-	return Bus{recv: recv, send: send}
+	return Bus{RecvC: recv, SendC: send}
 }

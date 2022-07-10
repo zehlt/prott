@@ -1,6 +1,4 @@
-package router
-
-import "github.com/zehlt/prott/network"
+package prott
 
 type MessageType int
 
@@ -13,7 +11,7 @@ const (
 
 type Message struct {
 	T        MessageType
-	P        network.Packet
+	P        Packet
 	Sender   int
 	Receiver int
 }

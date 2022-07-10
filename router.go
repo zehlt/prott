@@ -1,19 +1,17 @@
-package router
+package prott
 
 import (
 	"context"
 	"time"
-
-	"github.com/zehlt/prott/network"
 )
 
 type Router interface {
-	Register(t network.PacketType, f func(Env))
+	Register(t PacketType, f func(Env))
 	Serve(ctx context.Context, wait Waiter)
 }
 
 type router struct {
-	dispatch network.Dispatch[network.PacketType, Env]
+	dispatch Dispatch[PacketType, Env]
 }
 
 func NewRouter() Router {
@@ -23,7 +21,7 @@ func NewRouter() Router {
 	return &r
 }
 
-func (r *router) Register(t network.PacketType, f func(Env)) {
+func (r *router) Register(t PacketType, f func(Env)) {
 	r.dispatch.Register(t, f)
 }
 
@@ -62,7 +60,7 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 
 	go func() {
 		// TODO: need to remove chan when close after deconnection from player
-		connections := make(map[int]chan network.Packet)
+		connections := make(map[int]chan Packet)
 
 	loop:
 		for {
@@ -73,7 +71,7 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 			case status := <-statusChan:
 				switch status.T {
 				case CONNECTION_STATUS:
-					sendChannel := make(chan network.Packet)
+					sendChannel := make(chan Packet)
 					connections[status.Connection.Id()] = sendChannel
 					// TODO: maybe move this to his own goroutine
 					r.handleClientConnection(ctx, status.Connection, sendChannel, messageChan, statusChan)
@@ -118,7 +116,7 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 
 }
 
-func (r *router) handleClientConnection(ctx context.Context, conn network.Connection, send <-chan network.Packet, messageChan chan<- Message, statusChan chan<- Status) {
+func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- Message, statusChan chan<- Status) {
 	go func() {
 		defer conn.Close()
 
@@ -146,11 +144,11 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 
 		// TODO: make the dispatch in separate goroutine
 		// CONNECTION
-		r.dispatch.Disp(network.USER_CONNECTED_PACKET,
+		r.dispatch.Disp(USER_CONNECTED_PACKET,
 			Env{Req: Request{
 				Id:     conn.Id(),
 				Addr:   conn.RemoteAddr(),
-				Packet: network.Packet{T: network.USER_CONNECTED_PACKET, Data: network.UserConnectedPacket{}},
+				Packet: Packet{T: USER_CONNECTED_PACKET, Data: UserConnectedPacket{}},
 			}, Res: Response{id: conn.Id(), messageChan: messageChan}})
 
 		// receive
@@ -159,11 +157,11 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 			if err != nil {
 				cancel()
 
-				r.dispatch.Disp(network.USER_DISCONNECTED_PACKET,
+				r.dispatch.Disp(USER_DISCONNECTED_PACKET,
 					Env{Req: Request{
 						Id:     conn.Id(),
 						Addr:   conn.RemoteAddr(),
-						Packet: network.Packet{T: network.USER_DISCONNECTED_PACKET, Data: network.UserConnectedPacket{}},
+						Packet: Packet{T: USER_DISCONNECTED_PACKET, Data: UserConnectedPacket{}},
 					}, Res: Response{}})
 
 				break

@@ -1,6 +1,4 @@
-package router
-
-import "github.com/zehlt/prott/network"
+package prott
 
 type StatusType int
 
@@ -11,5 +9,5 @@ const (
 
 type Status struct {
 	T          StatusType
-	Connection network.Connection
+	Connection Connection
 }
