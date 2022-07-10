@@ -11,7 +11,7 @@ type tcpSocket struct {
 	cancel      context.CancelFunc
 }
 
-func NewTcpSocket() Socket {
+func newTcpSocket() Socket {
 	return &tcpSocket{
 		isConnected: false,
 	}
@@ -31,7 +31,7 @@ func (c *tcpSocket) Connect(port string) (Bus, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	c.cancel = cancel
 
-	bus := handleServerConnection(ctx, NewGoConnection(conn, 0))
+	bus := handleServerConnection(ctx, newGoConnection(conn, 0))
 	return bus, nil
 }
 
@@ -80,5 +80,5 @@ func handleServerConnection(ctx context.Context, conn Connection) Bus {
 		}
 	}()
 
-	return Bus{RecvC: recv, SendC: send}
+	return Bus{recvC: recv, sendC: send}
 }

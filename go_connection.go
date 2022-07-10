@@ -13,7 +13,7 @@ type goConnection struct {
 	id         int
 }
 
-func NewGoConnection(conn net.Conn, id int) Connection {
+func newGoConnection(conn net.Conn, id int) Connection {
 
 	return &goConnection{
 		conn:       conn,

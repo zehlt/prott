@@ -1,13 +1,13 @@
 package prott
 
-type StatusType int
+type statusType int
 
 const (
-	CONNECTION_STATUS StatusType = iota
+	CONNECTION_STATUS statusType = iota
 	DISCONNECTION_STATUS
 )
 
-type Status struct {
-	T          StatusType
-	Connection Connection
+type status struct {
+	t          statusType
+	connection Connection
 }

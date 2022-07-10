@@ -14,9 +14,9 @@ func (g *GameServer) UserDisconnected(env prott.Env) {
 }
 
 func (g *GameServer) UserChat(env prott.Env) {
-	mess := env.Req.Packet.Data.(prott.UserChatPacket)
+	mess := env.Req.Packet().Data.(prott.UserChatPacket)
 
 	// env.Res.Emit(prott.Packet{T: prott.SERVER_CHAT_PACKET, Data: prott.ServerChatPacket{Message: fmt.Sprintf("%d said %s", env.Req.Id, mess.Message)}})
 	// env.Res.Boardcast(prott.Packet{T: prott.SERVER_CHAT_PACKET, Data: prott.ServerChatPacket{Message: fmt.Sprintf("%d said %s", env.Req.Id, mess.Message)}})
-	env.Res.Unicast(env.Req.Id, prott.Packet{T: prott.SERVER_CHAT_PACKET, Data: prott.ServerChatPacket{Message: fmt.Sprintf("%d said %s", env.Req.Id, mess.Message)}})
+	env.Res.Unicast(env.Req.Id(), prott.Packet{T: prott.SERVER_CHAT_PACKET, Data: prott.ServerChatPacket{Message: fmt.Sprintf("%d said %s", env.Req.Id(), mess.Message)}})
 }

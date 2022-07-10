@@ -1,17 +1,17 @@
 package prott
 
-type MessageType int
+type messageType int
 
 const (
-	EMIT_MESSAGE MessageType = iota
+	EMIT_MESSAGE messageType = iota
 	UNICAST_MESSAGE
 	MULTICAST_MESSAGE
 	BROADCAST_MESSAGE
 )
 
-type Message struct {
-	T        MessageType
-	P        Packet
-	Sender   int
-	Receiver int
+type message struct {
+	t        messageType
+	p        Packet
+	sender   int
+	receiver int
 }

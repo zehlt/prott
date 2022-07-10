@@ -4,7 +4,7 @@ import (
 	"net"
 )
 
-func NewTcpWaiter(port string) (Waiter, error) {
+func newTcpWaiter(port string) (Waiter, error) {
 	l, err := net.Listen("tcp", port)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (w *tcpWaiter) Accept() (Connection, error) {
 
 	// TODO: Use UUID or entity arena
 	w.ids++
-	return NewGoConnection(conn, w.ids), nil
+	return newGoConnection(conn, w.ids), nil
 }
 
 func (w *tcpWaiter) Close() error {

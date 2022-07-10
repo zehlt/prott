@@ -14,7 +14,7 @@ type router struct {
 	dispatch Dispatch[PacketType, Env]
 }
 
-func NewRouter() Router {
+func newRouter() Router {
 	r := router{}
 	r.dispatch.Init()
 
@@ -26,7 +26,7 @@ func (r *router) Register(t PacketType, f func(Env)) {
 }
 
 func (r *router) Serve(ctx context.Context, wait Waiter) {
-	messageChan := make(chan Message)
+	messageChan := make(chan message)
 	defer close(messageChan)
 
 	connections := r.waitForConnection(ctx, wait)
@@ -35,8 +35,8 @@ func (r *router) Serve(ctx context.Context, wait Waiter) {
 	time.Sleep(time.Hour * 1)
 }
 
-func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan Status {
-	statusChan := make(chan Status)
+func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan status {
+	statusChan := make(chan status)
 
 	go func() {
 		defer close(statusChan)
@@ -48,7 +48,7 @@ func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan Status
 				panic(err)
 			}
 
-			statusChan <- Status{T: CONNECTION_STATUS, Connection: conn}
+			statusChan <- status{t: CONNECTION_STATUS, connection: conn}
 		}
 
 	}()
@@ -56,7 +56,7 @@ func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan Status
 	return statusChan
 }
 
-func (r *router) route(ctx context.Context, statusChan chan Status, messageChan chan Message) {
+func (r *router) route(ctx context.Context, statusChan chan status, messageChan chan message) {
 
 	go func() {
 		// TODO: need to remove chan when close after deconnection from player
@@ -69,45 +69,45 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 				break loop
 
 			case status := <-statusChan:
-				switch status.T {
+				switch status.t {
 				case CONNECTION_STATUS:
 					sendChannel := make(chan Packet)
-					connections[status.Connection.Id()] = sendChannel
+					connections[status.connection.Id()] = sendChannel
 					// TODO: maybe move this to his own goroutine
-					r.handleClientConnection(ctx, status.Connection, sendChannel, messageChan, statusChan)
+					r.handleClientConnection(ctx, status.connection, sendChannel, messageChan, statusChan)
 
 				case DISCONNECTION_STATUS:
-					send, ok := connections[status.Connection.Id()]
+					send, ok := connections[status.connection.Id()]
 					if !ok {
 						panic("try do disconnect no connection")
 					}
 					close(send)
 
-					delete(connections, status.Connection.Id())
+					delete(connections, status.connection.Id())
 				}
 
 			case message := <-messageChan:
-				switch message.T {
+				switch message.t {
 
 				case UNICAST_MESSAGE:
-					send, ok := connections[message.Receiver]
+					send, ok := connections[message.receiver]
 					if !ok {
 						panic("try to send message to unknown connection router.go")
 					}
-					send <- message.P
+					send <- message.p
 
 				case BROADCAST_MESSAGE:
 					for key, send := range connections {
-						if key == message.Sender {
+						if key == message.sender {
 							continue
 						}
 
-						send <- message.P
+						send <- message.p
 					}
 
 				case EMIT_MESSAGE:
 					for _, send := range connections {
-						send <- message.P
+						send <- message.p
 					}
 				}
 			}
@@ -116,7 +116,7 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 
 }
 
-func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- Message, statusChan chan<- Status) {
+func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- message, statusChan chan<- status) {
 	go func() {
 		defer conn.Close()
 
@@ -139,16 +139,16 @@ func (r *router) handleClientConnection(ctx context.Context, conn Connection, se
 				}
 			}
 
-			statusChan <- Status{T: DISCONNECTION_STATUS, Connection: conn}
+			statusChan <- status{t: DISCONNECTION_STATUS, connection: conn}
 		}()
 
 		// TODO: make the dispatch in separate goroutine
 		// CONNECTION
 		r.dispatch.Disp(USER_CONNECTED_PACKET,
 			Env{Req: Request{
-				Id:     conn.Id(),
-				Addr:   conn.RemoteAddr(),
-				Packet: Packet{T: USER_CONNECTED_PACKET, Data: UserConnectedPacket{}},
+				id:     conn.Id(),
+				addr:   conn.RemoteAddr(),
+				packet: Packet{T: USER_CONNECTED_PACKET, Data: UserConnectedPacket{}},
 			}, Res: Response{id: conn.Id(), messageChan: messageChan}})
 
 		// receive
@@ -159,9 +159,9 @@ func (r *router) handleClientConnection(ctx context.Context, conn Connection, se
 
 				r.dispatch.Disp(USER_DISCONNECTED_PACKET,
 					Env{Req: Request{
-						Id:     conn.Id(),
-						Addr:   conn.RemoteAddr(),
-						Packet: Packet{T: USER_DISCONNECTED_PACKET, Data: UserConnectedPacket{}},
+						id:     conn.Id(),
+						addr:   conn.RemoteAddr(),
+						packet: Packet{T: USER_DISCONNECTED_PACKET, Data: UserConnectedPacket{}},
 					}, Res: Response{}})
 
 				break
@@ -169,9 +169,9 @@ func (r *router) handleClientConnection(ctx context.Context, conn Connection, se
 
 			r.dispatch.Disp(packet.T,
 				Env{Req: Request{
-					Id:     conn.Id(),
-					Addr:   conn.RemoteAddr(),
-					Packet: packet,
+					id:     conn.Id(),
+					addr:   conn.RemoteAddr(),
+					packet: packet,
 				}, Res: Response{id: conn.Id(), messageChan: messageChan}})
 		}
 	}()
