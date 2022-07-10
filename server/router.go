@@ -43,7 +43,6 @@ func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan Status
 
 	go func() {
 		defer close(statusChan)
-		fmt.Println("waiting for connection...")
 
 		for {
 			// TODO: handle when the connection broke or something
@@ -88,8 +87,6 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 					close(send)
 
 					delete(connections, status.Connection.Id())
-					fmt.Println("REMOVED STATUS CHAN")
-					fmt.Println("DISCONNECTION STATUS")
 				}
 
 			case message := <-messageChan:
@@ -103,9 +100,16 @@ func (r *router) route(ctx context.Context, statusChan chan Status, messageChan 
 					send <- message.P
 
 				case BROADCAST_MESSAGE:
+					fmt.Println("Broadcast connections", connections)
+
 					for key, send := range connections {
-						fmt.Println(key)
-						fmt.Println(send)
+						if key == message.Sender {
+							fmt.Println("ingore", key)
+							continue
+						}
+
+						fmt.Println("send to", key, message, send)
+						send <- message.P
 					}
 
 				case EMIT_MESSAGE:
@@ -126,20 +130,6 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 		// TODO: send a deconection packet to signal to not send to him anymore
 		ctx, cancel := context.WithCancel(ctx)
 
-		// Handshake
-		// err := conn.Write(network.Packet{T: network.SERVER_CONNECTION_ACCEPTED_PACKET, Data: network.ServerConnectionAcceptedPacket{}})
-		// if err != nil {
-		// 	panic(err)
-		// }
-
-		// CONNECTION
-		r.dispatch.Disp(network.USER_CONNECTED_PACKET,
-			Env{Req: Request{
-				Id:     conn.Id(),
-				Addr:   conn.RemoteAddr(),
-				Packet: network.Packet{T: network.USER_CONNECTED_PACKET, Data: network.UserConnectedPacket{}},
-			}, Res: Response{id: conn.Id(), messageChan: messageChan}})
-
 		// send
 		go func() {
 		out:
@@ -156,25 +146,31 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 				}
 			}
 
-			fmt.Println("user send goroutine")
-
 			statusChan <- Status{T: DISCONNECTION_STATUS, Connection: conn}
-
-			// DISCONNECTION
-			r.dispatch.Disp(network.USER_DISCONNECTED_PACKET,
-				Env{Req: Request{
-					Id:     conn.Id(),
-					Addr:   conn.RemoteAddr(),
-					Packet: network.Packet{T: network.USER_DISCONNECTED_PACKET, Data: network.UserConnectedPacket{}},
-				}, Res: Response{}})
-
 		}()
+
+		// TODO: make the dispatch in separate goroutine
+		// CONNECTION
+		r.dispatch.Disp(network.USER_CONNECTED_PACKET,
+			Env{Req: Request{
+				Id:     conn.Id(),
+				Addr:   conn.RemoteAddr(),
+				Packet: network.Packet{T: network.USER_CONNECTED_PACKET, Data: network.UserConnectedPacket{}},
+			}, Res: Response{id: conn.Id(), messageChan: messageChan}})
 
 		// receive
 		for {
 			packet, err := conn.Read()
 			if err != nil {
 				cancel()
+
+				r.dispatch.Disp(network.USER_DISCONNECTED_PACKET,
+					Env{Req: Request{
+						Id:     conn.Id(),
+						Addr:   conn.RemoteAddr(),
+						Packet: network.Packet{T: network.USER_DISCONNECTED_PACKET, Data: network.UserConnectedPacket{}},
+					}, Res: Response{}})
+
 				break
 			}
 
@@ -183,8 +179,7 @@ func (r *router) handleClientConnection(ctx context.Context, conn network.Connec
 					Id:     conn.Id(),
 					Addr:   conn.RemoteAddr(),
 					Packet: packet,
-				}, Res: Response{}})
+				}, Res: Response{id: conn.Id(), messageChan: messageChan}})
 		}
-		fmt.Println("user recv goroutine")
 	}()
 }

@@ -1,6 +1,8 @@
 package server
 
-import "github.com/zehlt/prott/network"
+import (
+	"github.com/zehlt/prott/network"
+)
 
 type Env struct {
 	Req Request

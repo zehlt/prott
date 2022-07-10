@@ -1,6 +1,8 @@
 package client
 
-import "github.com/zehlt/prott/network"
+import (
+	"github.com/zehlt/prott/network"
+)
 
 type Bus struct {
 	recv <-chan network.Packet

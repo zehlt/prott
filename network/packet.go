@@ -7,10 +7,10 @@ type PacketType int
 const (
 	USER_CONNECTED_PACKET PacketType = iota
 	USER_DISCONNECTED_PACKET
+	USER_CHAT_PACKET
 
 	SERVER_CHAT_PACKET
 
-	SERVER_CONNECTION_ACCEPTED_PACKET
 	CUSTOM_PACKET
 )
 
@@ -25,6 +25,10 @@ type UserDisconnectedPacket struct {
 type UserConnectedPacket struct {
 }
 
+type UserChatPacket struct {
+	Message string
+}
+
 type ServerConnectionAcceptedPacket struct {
 }
 
@@ -36,6 +40,7 @@ func Register() {
 	gob.Register(Packet{})
 	gob.Register(UserConnectedPacket{})
 	gob.Register(UserDisconnectedPacket{})
+	gob.Register(UserChatPacket{})
 	gob.Register(ServerChatPacket{})
 	gob.Register(ServerConnectionAcceptedPacket{})
 }

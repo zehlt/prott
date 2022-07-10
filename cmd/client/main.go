@@ -22,33 +22,57 @@ func main() {
 	network.Register()
 
 	port := ":8091"
-
 	gc := NewGameClient()
+
 	bus, err := gc.socket.Connect(port)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("connection completly")
 
-	data := bus.Recv()
-	fmt.Println(data)
+	fmt.Println("TRY TO SEND")
+	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	time.Sleep(time.Second * 1)
 
-	time.Sleep(time.Second * 3)
+	for i := 0; i < 100; i++ {
+		data, ok := bus.TryRecv()
+		if ok {
+			fmt.Println("message", data)
+		}
+	}
+
+	// bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	time.Sleep(time.Millisecond * 2)
 
 	gc.socket.Disconnect()
 	fmt.Println("disconnected completly")
 
-	time.Sleep(time.Second * 3)
+	// for i := 0; i < 10; i++ {
+	// 	bus, err := gc.socket.Connect(port)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	fmt.Println("connection completly")
 
-	fmt.Println("retry connection")
+	// 	data := bus.Recv()
+	// 	fmt.Println("message", data)
+	// 	time.Sleep(time.Millisecond * 500)
 
-	bus, err = gc.socket.Connect(port)
-	if err != nil {
-		panic(err)
-	}
+	// 	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	// 	time.Sleep(time.Millisecond * 30)
 
-	data = bus.Recv()
-	fmt.Println(data)
+	// 	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	// 	time.Sleep(time.Millisecond * 90)
 
-	time.Sleep(time.Second * 3)
+	// 	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	// 	time.Sleep(time.Millisecond * 10)
 
+	// 	bus.Send(network.Packet{T: network.USER_CHAT_PACKET, Data: network.UserChatPacket{Message: "hello from me"}})
+	// 	time.Sleep(time.Millisecond * 500)
+
+	// 	gc.socket.Disconnect()
+	// 	fmt.Println("disconnected completly")
+
+	// 	time.Sleep(time.Millisecond * 500)
+	// }
 }

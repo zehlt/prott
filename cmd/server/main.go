@@ -28,6 +28,7 @@ func main() {
 
 	gms.router.Register(network.USER_CONNECTED_PACKET, gms.UserConnected)
 	gms.router.Register(network.USER_DISCONNECTED_PACKET, gms.UserDisconnected)
+	gms.router.Register(network.USER_CHAT_PACKET, gms.UserChat)
 
 	waiter, err := server.NewTcpWaiter(port)
 	if err != nil {
