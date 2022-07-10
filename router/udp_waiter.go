@@ -1,4 +1,4 @@
-package server
+package router
 
 // func NewUdpWaiter(port string) (Waiter, error) {
 // 	l, err := net.Listen("udp", port)

@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/zehlt/prott/client"
 	"github.com/zehlt/prott/network"
+	"github.com/zehlt/prott/socket"
 )
 
 type GameClient struct {
-	socket client.Socket
+	socket socket.Socket
 }
 
 func NewGameClient() *GameClient {
 	return &GameClient{
-		socket: client.NewTcpSocket(),
+		socket: socket.NewTcpSocket(),
 	}
 }
 

@@ -1,4 +1,4 @@
-package client
+package socket
 
 import (
 	"github.com/zehlt/prott/network"

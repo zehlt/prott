@@ -5,16 +5,16 @@ import (
 	"fmt"
 
 	"github.com/zehlt/prott/network"
-	"github.com/zehlt/prott/server"
+	"github.com/zehlt/prott/router"
 )
 
 type GameServer struct {
-	router server.Router
+	router router.Router
 }
 
 func NewGameServer() *GameServer {
 	return &GameServer{
-		router: server.NewRouter(),
+		router: router.NewRouter(),
 	}
 }
 
@@ -23,14 +23,14 @@ func main() {
 
 	port := ":8091"
 
-	fmt.Println("server started on port", port)
+	fmt.Println("router started on port", port)
 	gms := NewGameServer()
 
 	gms.router.Register(network.USER_CONNECTED_PACKET, gms.UserConnected)
 	gms.router.Register(network.USER_DISCONNECTED_PACKET, gms.UserDisconnected)
 	gms.router.Register(network.USER_CHAT_PACKET, gms.UserChat)
 
-	waiter, err := server.NewTcpWaiter(port)
+	waiter, err := router.NewTcpWaiter(port)
 	if err != nil {
 		panic(err)
 	}
