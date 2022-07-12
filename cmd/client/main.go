@@ -32,6 +32,7 @@ func main() {
 
 	fmt.Println("TRY TO SEND")
 	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
+	fmt.Println("AFTER TO SEND")
 
 	for i := 0; i < 2; i++ {
 		data := bus.Recv()

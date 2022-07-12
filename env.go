@@ -25,21 +25,21 @@ func (r *Request) Addr() string {
 
 type Response struct {
 	id          int
-	messageChan chan<- message
+	messageChan chan<- Message
 }
 
 func (r *Response) Reply(p Packet) {
-	r.messageChan <- message{t: UNICAST_MESSAGE, p: p, receiver: r.id}
+	r.messageChan <- Message{T: UNICAST_MESSAGE, P: p, Receiver: r.id}
 }
 
 func (r *Response) Unicast(id int, p Packet) {
-	r.messageChan <- message{t: UNICAST_MESSAGE, p: p, receiver: id}
+	r.messageChan <- Message{T: UNICAST_MESSAGE, P: p, Receiver: id}
 }
 
 func (r *Response) Boardcast(p Packet) {
-	r.messageChan <- message{t: BROADCAST_MESSAGE, p: p, sender: r.id}
+	r.messageChan <- Message{T: BROADCAST_MESSAGE, P: p, Sender: r.id}
 }
 
 func (r *Response) Emit(p Packet) {
-	r.messageChan <- message{t: EMIT_MESSAGE, p: p}
+	r.messageChan <- Message{T: EMIT_MESSAGE, P: p}
 }

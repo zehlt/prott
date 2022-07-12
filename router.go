@@ -2,12 +2,11 @@ package prott
 
 import (
 	"context"
-	"time"
 )
 
 type Router interface {
 	Register(t PacketType, f func(Env))
-	Serve(ctx context.Context, wait Waiter)
+	Serve(ctx context.Context, wait Waiter) chan<- Message
 }
 
 type router struct {
@@ -25,14 +24,15 @@ func (r *router) Register(t PacketType, f func(Env)) {
 	r.dispatch.Register(t, f)
 }
 
-func (r *router) Serve(ctx context.Context, wait Waiter) {
-	messageChan := make(chan message)
-	defer close(messageChan)
+func (r *router) Serve(ctx context.Context, wait Waiter) chan<- Message {
+	// TODO: close messageChan
+	// defer close(messageChan)
+	messageChan := make(chan Message)
 
 	connections := r.waitForConnection(ctx, wait)
 	r.route(ctx, connections, messageChan)
 
-	time.Sleep(time.Hour * 1)
+	return messageChan
 }
 
 func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan status {
@@ -56,7 +56,7 @@ func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan status
 	return statusChan
 }
 
-func (r *router) route(ctx context.Context, statusChan chan status, messageChan chan message) {
+func (r *router) route(ctx context.Context, statusChan chan status, messageChan chan Message) {
 
 	go func() {
 		// TODO: need to remove chan when close after deconnection from player
@@ -87,27 +87,27 @@ func (r *router) route(ctx context.Context, statusChan chan status, messageChan 
 				}
 
 			case message := <-messageChan:
-				switch message.t {
+				switch message.T {
 
 				case UNICAST_MESSAGE:
-					send, ok := connections[message.receiver]
+					send, ok := connections[message.Receiver]
 					if !ok {
 						panic("try to send message to unknown connection router.go")
 					}
-					send <- message.p
+					send <- message.P
 
 				case BROADCAST_MESSAGE:
 					for key, send := range connections {
-						if key == message.sender {
+						if key == message.Sender {
 							continue
 						}
 
-						send <- message.p
+						send <- message.P
 					}
 
 				case EMIT_MESSAGE:
 					for _, send := range connections {
-						send <- message.p
+						send <- message.P
 					}
 				}
 			}
@@ -116,7 +116,7 @@ func (r *router) route(ctx context.Context, statusChan chan status, messageChan 
 
 }
 
-func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- message, statusChan chan<- status) {
+func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- Message, statusChan chan<- status) {
 	go func() {
 		defer conn.Close()
 
