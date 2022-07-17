@@ -82,7 +82,6 @@ func (r *router) route(ctx context.Context, statusChan chan status, messageChan 
 						panic("try do disconnect no connection")
 					}
 					close(send)
-
 					delete(connections, status.connection.Id())
 				}
 
@@ -117,30 +116,30 @@ func (r *router) route(ctx context.Context, statusChan chan status, messageChan 
 }
 
 func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- Message, statusChan chan<- status) {
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	// send
+	go func() {
+	out:
+		for {
+			select {
+			case packet_to_send := <-send:
+				err := conn.Write(packet_to_send)
+				if err != nil {
+					panic(err)
+				}
+
+			case <-ctx.Done():
+				break out
+			}
+		}
+
+		statusChan <- status{t: DISCONNECTION_STATUS, connection: conn}
+	}()
+
 	go func() {
 		defer conn.Close()
-
-		// TODO: send a deconection packet to signal to not send to him anymore
-		ctx, cancel := context.WithCancel(ctx)
-
-		// send
-		go func() {
-		out:
-			for {
-				select {
-				case packet_to_send := <-send:
-					err := conn.Write(packet_to_send)
-					if err != nil {
-						panic(err)
-					}
-
-				case <-ctx.Done():
-					break out
-				}
-			}
-
-			statusChan <- status{t: DISCONNECTION_STATUS, connection: conn}
-		}()
 
 		// TODO: make the dispatch in separate goroutine
 		// CONNECTION

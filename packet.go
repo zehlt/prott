@@ -10,6 +10,7 @@ const (
 	USER_CHAT_PACKET
 
 	SERVER_CHAT_PACKET
+	SERVER_CLOSE_CONNECTION_PACKET
 
 	CUSTOM_PACKET
 )
@@ -29,7 +30,8 @@ type UserChatPacket struct {
 	Message string
 }
 
-type ServerConnectionAcceptedPacket struct {
+type ServerCloseConnectionPacket struct {
+	Err string
 }
 
 type ServerChatPacket struct {
@@ -42,5 +44,5 @@ func Register() {
 	gob.Register(UserDisconnectedPacket{})
 	gob.Register(UserChatPacket{})
 	gob.Register(ServerChatPacket{})
-	gob.Register(ServerConnectionAcceptedPacket{})
+	gob.Register(ServerCloseConnectionPacket{})
 }

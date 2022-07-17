@@ -15,3 +15,15 @@ type Message struct {
 	Sender   int
 	Receiver int
 }
+
+type SocketMessageType int
+
+const (
+	SEND_MESSAGE_SOCKET SocketMessageType = iota
+	CLOSE_MESSAGE_SOCKET
+)
+
+type SocketMessage struct {
+	T SocketMessageType
+	P Packet
+}

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/zehlt/prott"
@@ -27,50 +29,56 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("connection completly")
-	time.Sleep(time.Second * 2)
 
-	fmt.Println("TRY TO SEND")
-	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	fmt.Println("AFTER TO SEND")
+	ctx, cancel := context.WithCancel(context.Background())
 
-	for i := 0; i < 2; i++ {
-		data := bus.Recv()
-		fmt.Println("message", data)
-	}
+	bus.Register(prott.SERVER_CLOSE_CONNECTION_PACKET, func(p prott.Packet) {
+		bus.Close()
+		cancel()
+	})
 
-	// bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	time.Sleep(time.Second * 3)
+	bus.Register(prott.SERVER_CHAT_PACKET, func(p prott.Packet) {
+		fmt.Println("MESSAGE RECEIVED")
+	})
 
-	gc.socket.Disconnect()
-	fmt.Println("disconnected completly")
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	// for i := 0; i < 10; i++ {
-	// 	bus, err := gc.socket.Connect(port)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	fmt.Println("connection completly")
+	go func() {
+		defer wg.Done()
 
-	// 	data := bus.Recv()
-	// 	fmt.Println("message", data)
-	// 	time.Sleep(time.Millisecond * 500)
+	send:
+		for {
+			select {
+			case <-ctx.Done():
+				break send
+			default:
+				bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
+				time.Sleep(time.Millisecond * 100)
+			}
+		}
+	}()
 
-	// 	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	// 	time.Sleep(time.Millisecond * 30)
+	go func() {
+		defer wg.Done()
 
-	// 	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	// 	time.Sleep(time.Millisecond * 90)
+	read:
+		for {
+			select {
+			case <-ctx.Done():
+				break read
+			default:
+				bus.Recv()
+			}
+		}
+	}()
 
-	// 	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	// 	time.Sleep(time.Millisecond * 10)
+	go func() {
+		time.Sleep(time.Millisecond * 6500)
+		bus.Close()
+		cancel()
+	}()
 
-	// 	bus.Send(prott.Packet{T: prott.USER_CHAT_PACKET, Data: prott.UserChatPacket{Message: "hello from me"}})
-	// 	time.Sleep(time.Millisecond * 500)
-
-	// 	gc.socket.Disconnect()
-	// 	fmt.Println("disconnected completly")
-
-	// 	time.Sleep(time.Millisecond * 500)
-	// }
+	wg.Wait()
+	fmt.Println("CLIENT CLOSED")
 }

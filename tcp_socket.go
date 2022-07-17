@@ -8,7 +8,6 @@ import (
 
 type tcpSocket struct {
 	isConnected bool
-	cancel      context.CancelFunc
 }
 
 func newTcpSocket() Socket {
@@ -28,57 +27,58 @@ func (c *tcpSocket) Connect(port string) (Bus, error) {
 	}
 	c.isConnected = true
 
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancel = cancel
-
-	bus := handleServerConnection(ctx, newGoConnection(conn, 0))
+	bus := c.handleServerConnection(newGoConnection(conn, 0))
 	return bus, nil
 }
 
-func (c *tcpSocket) Disconnect() {
-	c.cancel()
-	c.isConnected = false
-}
-
-func handleServerConnection(ctx context.Context, conn Connection) Bus {
+func (c *tcpSocket) handleServerConnection(conn Connection) Bus {
 	recv := make(chan Packet, 1)
-	send := make(chan Packet, 1)
+
+	var bus Bus
+	send := bus.Init(recv)
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		cont, cancel := context.WithCancel(ctx)
+		defer conn.Close()
 
-		// send
-		go func() {
-			defer conn.Close()
-			defer close(recv)
-			defer close(send)
+	loop:
+		for {
+			select {
 
-		out:
-			for {
-				select {
-				case packet_to_send := <-send:
-					err := conn.Write(packet_to_send)
+			case <-ctx.Done():
+				break loop
+
+			case socketMessage := <-send:
+				switch socketMessage.T {
+
+				case SEND_MESSAGE_SOCKET:
+					err := conn.Write(socketMessage.P)
 					if err != nil {
-						panic(err)
+						panic(fmt.Sprintln("error trying to send packet", err))
 					}
 
-				case <-cont.Done():
-					break out
+				case CLOSE_MESSAGE_SOCKET:
+					break loop
 				}
 			}
-		}()
+		}
+		c.isConnected = false
+	}()
 
-		// receive
+	go func() {
+		defer close(recv)
+
 		for {
 			packet, err := conn.Read()
 			if err != nil {
+				recv <- Packet{T: SERVER_CLOSE_CONNECTION_PACKET, Data: ServerCloseConnectionPacket{Err: err.Error()}}
 				cancel()
 				break
 			}
-
 			recv <- packet
 		}
 	}()
 
-	return Bus{recvC: recv, sendC: send}
+	return bus
 }

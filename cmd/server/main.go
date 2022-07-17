@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/zehlt/prott"
 )
@@ -36,6 +35,6 @@ func main() {
 	}
 	gms.router.Serve(context.Background(), waiter)
 
-	time.Sleep(time.Hour)
-
+	for {
+	}
 }
