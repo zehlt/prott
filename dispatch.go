@@ -12,7 +12,7 @@ func (d *Dispatch[T, D]) Init() {
 	d.handlers = make(map[T][]func(data D))
 }
 
-func (d *Dispatch[T, D]) Register(t T, f func(data D)) {
+func (d *Dispatch[T, D]) Subscribe(t T, f func(data D)) {
 	d.ensureArrayExists(t)
 
 	d.handlers[t] = append(d.handlers[t], f)
@@ -25,7 +25,7 @@ func (d *Dispatch[T, D]) ensureArrayExists(t T) {
 	}
 }
 
-func (d *Dispatch[T, D]) Disp(t T, data D) error {
+func (d *Dispatch[T, D]) Publish(t T, data D) error {
 	functions, ok := d.handlers[t]
 	if !ok {
 		return fmt.Errorf("type has not been registered")

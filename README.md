@@ -14,3 +14,6 @@ Protocol for game server communication based on UDP or TCP
 
 - Add Middlewaire capability
 - Add Possibility to block event
+
+Add 1.19 documentation and try to generate it
+

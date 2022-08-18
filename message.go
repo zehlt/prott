@@ -1,29 +1,22 @@
 package prott
 
-type MessageType int
+type PacketType int
 
 const (
-	EMIT_MESSAGE MessageType = iota
-	UNICAST_MESSAGE
-	MULTICAST_MESSAGE
-	BROADCAST_MESSAGE
+	EMIT_PACKET PacketType = iota
+	UNICAST_PACKET
+	MULTICAST_PACKET
+	BROADCAST_PACKET
 )
 
 type Message struct {
-	T        MessageType
-	P        Packet
-	Sender   int
-	Receiver int
+	Data string
 }
 
-type SocketMessageType int
+type Packet struct {
+	Type     PacketType
+	Sender   string
+	Receiver string
 
-const (
-	SEND_MESSAGE_SOCKET SocketMessageType = iota
-	CLOSE_MESSAGE_SOCKET
-)
-
-type SocketMessage struct {
-	T SocketMessageType
-	P Packet
+	Data Message
 }

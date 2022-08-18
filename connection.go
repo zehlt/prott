@@ -1,10 +1,15 @@
 package prott
 
+type Listener interface {
+	Accept() (Connection, error)
+	Close() error
+	// Addr() string
+}
+
 type Connection interface {
 	Read() (Packet, error)
-	Write(p Packet) error
+	Write(Packet) error
 	LocalAddr() string
 	RemoteAddr() string
-	Id() int
 	Close() error
 }

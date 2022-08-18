@@ -2,176 +2,216 @@ package prott
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"sync"
 )
 
-type Router interface {
-	Register(t PacketType, f func(Env))
-	Serve(ctx context.Context, wait Waiter) chan<- Message
+type Router struct {
+	r routeTable[string]
 }
 
-type router struct {
-	dispatch Dispatch[PacketType, Env]
+func NewRouter() *Router {
+	var s Router
+	s.r = newRouteTable[string]()
+	return &s
 }
 
-func newRouter() Router {
-	r := router{}
-	r.dispatch.Init()
+func (s *Router) Send(p Packet) {
 
-	return &r
+	switch p.Type {
+	case EMIT_PACKET:
+		routes := s.r.GetAll()
+
+		for _, route := range routes {
+			log.Println(route)
+			route.c <- p
+		}
+
+		log.Println("EMIT")
+
+	case MULTICAST_PACKET:
+		log.Println("MULT")
+
+	case BROADCAST_PACKET:
+		log.Println("BROA")
+
+	case UNICAST_PACKET:
+		log.Println("UNIC")
+	}
 }
 
-func (r *router) Register(t PacketType, f func(Env)) {
-	r.dispatch.Register(t, f)
+func (s *Router) Serve(ctx context.Context, l Listener) {
+	handleClientConnection(ctx, registerClientConnection(ctx, &s.r, waitForConnection(ctx, l)))
 }
 
-func (r *router) Serve(ctx context.Context, wait Waiter) chan<- Message {
-	// TODO: close messageChan
-	// defer close(messageChan)
-	messageChan := make(chan Message)
-
-	connections := r.waitForConnection(ctx, wait)
-	r.route(ctx, connections, messageChan)
-
-	return messageChan
-}
-
-func (r *router) waitForConnection(ctx context.Context, wait Waiter) chan status {
-	statusChan := make(chan status)
+func waitForConnection(ctx context.Context, l Listener) <-chan Connection {
+	out := make(chan Connection)
 
 	go func() {
-		defer close(statusChan)
+		defer close(out)
 
 		for {
-			// TODO: handle when the connection broke or something
-			conn, err := wait.Accept()
+			conn, err := l.Accept()
 			if err != nil {
-				panic(err)
+				log.Fatal("error in wait for connection")
 			}
 
-			statusChan <- status{t: CONNECTION_STATUS, connection: conn}
+			out <- conn
 		}
-
 	}()
 
-	return statusChan
+	return out
 }
 
-func (r *router) route(ctx context.Context, statusChan chan status, messageChan chan Message) {
-
-	go func() {
-		// TODO: need to remove chan when close after deconnection from player
-		connections := make(map[int]chan Packet)
-
-	loop:
-		for {
-			select {
-			case <-ctx.Done():
-				break loop
-
-			case status := <-statusChan:
-				switch status.t {
-				case CONNECTION_STATUS:
-					sendChannel := make(chan Packet)
-					connections[status.connection.Id()] = sendChannel
-					// TODO: maybe move this to his own goroutine
-					r.handleClientConnection(ctx, status.connection, sendChannel, messageChan, statusChan)
-
-				case DISCONNECTION_STATUS:
-					send, ok := connections[status.connection.Id()]
-					if !ok {
-						panic("try do disconnect no connection")
-					}
-					close(send)
-					delete(connections, status.connection.Id())
-				}
-
-			case message := <-messageChan:
-				switch message.T {
-
-				case UNICAST_MESSAGE:
-					send, ok := connections[message.Receiver]
-					if !ok {
-						panic("try to send message to unknown connection router.go")
-					}
-					send <- message.P
-
-				case BROADCAST_MESSAGE:
-					for key, send := range connections {
-						if key == message.Sender {
-							continue
-						}
-
-						send <- message.P
-					}
-
-				case EMIT_MESSAGE:
-					for _, send := range connections {
-						send <- message.P
-					}
-				}
-			}
-		}
-	}()
-
+type RegisteredConnection struct {
+	Send chan Packet
+	Conn Connection
 }
 
-func (r *router) handleClientConnection(ctx context.Context, conn Connection, send <-chan Packet, messageChan chan<- Message, statusChan chan<- status) {
+func registerClientConnection(ctx context.Context, routeTable *routeTable[string], connections <-chan Connection) <-chan RegisteredConnection {
+	out := make(chan RegisteredConnection)
 
-	ctx, cancel := context.WithCancel(ctx)
-
-	// send
 	go func() {
-	out:
-		for {
-			select {
-			case packet_to_send := <-send:
-				err := conn.Write(packet_to_send)
-				if err != nil {
-					panic(err)
+		defer close(out)
+
+		for connection := range connections {
+			log.Println("CONNECTION: ", connection.RemoteAddr(), connection.LocalAddr())
+
+			send := make(chan Packet)
+			routeTable.Add(connection.RemoteAddr(), Route{c: send, addr: connection.RemoteAddr()})
+
+			out <- RegisteredConnection{
+				Send: send,
+				Conn: connection,
+			}
+		}
+
+	}()
+
+	return out
+}
+
+// func middlewarePacket(ctx context.Context, packets <-chan Packet, fn func(Packet) (Packet, bool)) <-chan Packet {
+// 	out := make(chan Packet)
+
+// 	go func() {
+// 		defer close(out)
+
+// 		for packet := range packets {
+// 			select {
+// 			case <-ctx.Done():
+// 				return
+// 			default:
+// 				p, ok := fn(packet)
+// 				if ok {
+// 					out <- p
+// 				}
+// 			}
+// 		}
+// 	}()
+
+// 	return out
+// }
+
+func handleClientConnection(ctx context.Context, connections <-chan RegisteredConnection) <-chan Packet {
+	packets := make(chan Packet)
+	// defer close(packets)
+
+	go func() {
+		for connection := range connections {
+
+			// read
+			go func(conn RegisteredConnection) {
+				for {
+					p, err := conn.Conn.Read()
+					if err != nil {
+						// TODO: do some error handling
+						// connection closed
+						log.Fatal(err)
+					}
+
+					packets <- p
 				}
+			}(connection)
 
-			case <-ctx.Done():
-				break out
-			}
-		}
+			// send
+			go func(conn RegisteredConnection) {
+				for p := range conn.Send {
+					log.Println("GONNA SEND:", p)
 
-		statusChan <- status{t: DISCONNECTION_STATUS, connection: conn}
-	}()
+					err := conn.Conn.Write(p)
+					if err != nil {
+						// TODO: do some error handling
 
-	go func() {
-		defer conn.Close()
-
-		// TODO: make the dispatch in separate goroutine
-		// CONNECTION
-		r.dispatch.Disp(USER_CONNECTED_PACKET,
-			Env{Req: Request{
-				id:     conn.Id(),
-				addr:   conn.RemoteAddr(),
-				packet: Packet{T: USER_CONNECTED_PACKET, Data: UserConnectedPacket{}},
-			}, Res: Response{id: conn.Id(), messageChan: messageChan}})
-
-		// receive
-		for {
-			packet, err := conn.Read()
-			if err != nil {
-				cancel()
-
-				r.dispatch.Disp(USER_DISCONNECTED_PACKET,
-					Env{Req: Request{
-						id:     conn.Id(),
-						addr:   conn.RemoteAddr(),
-						packet: Packet{T: USER_DISCONNECTED_PACKET, Data: UserConnectedPacket{}},
-					}, Res: Response{}})
-
-				break
-			}
-
-			r.dispatch.Disp(packet.T,
-				Env{Req: Request{
-					id:     conn.Id(),
-					addr:   conn.RemoteAddr(),
-					packet: packet,
-				}, Res: Response{id: conn.Id(), messageChan: messageChan}})
+						log.Fatal(err)
+					}
+				}
+			}(connection)
 		}
 	}()
+
+	return packets
+}
+
+// ROUTE TABLE
+
+type Route struct {
+	c    chan<- Packet
+	addr string
+}
+
+type routeTable[T comparable] struct {
+	routes map[T]Route
+
+	rwMutex sync.RWMutex
+}
+
+func newRouteTable[T comparable]() routeTable[T] {
+	return routeTable[T]{
+		routes: make(map[T]Route),
+	}
+}
+
+func (r *routeTable[T]) Add(id T, c Route) {
+	r.rwMutex.Lock()
+	defer r.rwMutex.Unlock()
+
+	log.Println("ADDIND A ROUTE")
+
+	r.routes[id] = c
+}
+
+func (r *routeTable[T]) Remove(id T) {
+	r.rwMutex.Lock()
+	defer r.rwMutex.Unlock()
+
+	delete(r.routes, id)
+}
+
+func (r *routeTable[T]) Get(id T) (Route, error) {
+	r.rwMutex.RLock()
+	defer r.rwMutex.RUnlock()
+
+	c, ok := r.routes[id]
+	if !ok {
+		return Route{}, fmt.Errorf("id does not match")
+	}
+
+	return c, nil
+}
+
+func (r *routeTable[T]) GetAll() []Route {
+	r.rwMutex.RLock()
+	defer r.rwMutex.RUnlock()
+
+	arr := make([]Route, len(r.routes))
+
+	i := 0
+	for _, v := range r.routes {
+		arr[i] = v
+		i++
+	}
+
+	return arr
 }

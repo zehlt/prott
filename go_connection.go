@@ -2,32 +2,32 @@ package prott
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"net"
 )
 
 type goConnection struct {
-	conn       net.Conn
+	conn net.Conn
+	enc  Encoder
+
 	buffReader []byte
-	id         int
 }
 
-func newGoConnection(conn net.Conn, id int) Connection {
+func newGoConnection(conn net.Conn) Connection {
 
 	return &goConnection{
-		conn:       conn,
+		conn: conn,
+		enc:  newGobEncoder(),
+
 		buffReader: make([]byte, 1000),
-		id:         id,
 	}
 }
 
 func (c *goConnection) Read() (Packet, error) {
-	// c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-
 	buffer := bytes.Buffer{}
 
-	// Check if the best way to do it
+	// TODO: check if deadline is neccesary
+	// c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	before, err := c.conn.Read(c.buffReader)
 	if err != nil {
 		return Packet{}, err
@@ -42,7 +42,7 @@ func (c *goConnection) Read() (Packet, error) {
 		return Packet{}, fmt.Errorf("unable to write inside the new buffer")
 	}
 
-	p, err := gobDecodePacket(buffer)
+	p, err := c.enc.Decode(buffer.Bytes())
 	if err != nil {
 		return Packet{}, err
 	}
@@ -52,18 +52,14 @@ func (c *goConnection) Read() (Packet, error) {
 
 func (c *goConnection) Write(p Packet) error {
 
-	b, err := gobEncodePacket(p)
+	b, err := c.enc.Encode(p)
 	if err != nil {
 		return err
 	}
 
 	// TODO: check if size is important
 	_, err = c.conn.Write(b)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (c *goConnection) LocalAddr() string {
@@ -74,10 +70,6 @@ func (c *goConnection) RemoteAddr() string {
 	return c.conn.RemoteAddr().String()
 }
 
-func (c *goConnection) Id() int {
-	return c.id
-}
-
 func (c *goConnection) Close() error {
 	err := c.conn.Close()
 	if err != nil {
@@ -85,28 +77,4 @@ func (c *goConnection) Close() error {
 	}
 
 	return nil
-}
-
-func gobDecodePacket(buffer bytes.Buffer) (Packet, error) {
-	var p Packet
-
-	e := gob.NewDecoder(&buffer)
-	err := e.Decode(&p)
-	if err != nil {
-		return Packet{}, err
-	}
-
-	return p, nil
-}
-
-func gobEncodePacket(p Packet) ([]byte, error) {
-	b := bytes.Buffer{}
-
-	e := gob.NewEncoder(&b)
-	err := e.Encode(p)
-	if err != nil {
-		return nil, err
-	}
-
-	return b.Bytes(), nil
 }
