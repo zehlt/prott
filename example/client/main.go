@@ -2,29 +2,46 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/zehlt/prott"
+	"github.com/zehlt/prott/example/common"
 )
 
 func main() {
-	log.Println("hello from client")
+	common.RegisterMessages()
 
-	socket := prott.NewTcpSocket()
-	conn, err := socket.Connect(":8090")
+	l, err := prott.Dial(prott.TCP, ":9192")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	defer conn.Close()
 
-	go func() {
-		p, err := conn.Read()
-		if err != nil {
-			log.Fatal(err)
-		}
+	log.Println("client connected")
 
-		log.Println("RECEIVED PACKET: ", p)
-	}()
+	mess, err := l.Read()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("type: %T, value: %v\n", mess, mess)
 
-	time.Sleep(30 * time.Second)
+	mess, err = l.Read()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("type: %T, value: %v\n", mess, mess)
+
+	mess, err = l.Read()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("type: %T, value: %v\n", mess, mess)
+
+	mess, err = l.Read()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("type: %T, value: %v\n", mess, mess)
+
+	l.Close()
+
+	log.Println("client disconnected")
 }
