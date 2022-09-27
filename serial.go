@@ -1,6 +1,7 @@
 package prott
 
 import (
+	"encoding/gob"
 	"fmt"
 	"reflect"
 	"sync"
@@ -21,6 +22,8 @@ func RegisterMessage(m Message) {
 	if ok {
 		panic("message type already registered")
 	}
+
+	gob.Register(m)
 
 	t := reflect.ValueOf(m).Elem().Type()
 	serial[m.Type()] = t

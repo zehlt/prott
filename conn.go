@@ -36,61 +36,62 @@ func (c *tcpConn) Read() (Message, error) {
 		return message, nil
 	}
 
-	n, err := c.conn.Read(c.rbuff[:])
-	if err != nil {
-		return nil, err
-	}
+	// n, err := c.conn.Read(c.rbuff[:])
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	rs := ReadStream{buff: c.rbuff[:n]}
+	// rs := ReadStream{buff: c.rbuff[:n]}
 
-	for n > rs.TotalRead() {
-		var t uint16
+	// for n > rs.TotalRead() {
+	// 	// var t uint16
 
-		err := rs.ReadUint16(&t)()
-		if err != nil {
-			return nil, err
-		}
+	// 	// err := rs.ReadUint16(&t)()
+	// 	// if err != nil {
+	// 	// 	return nil, err
+	// 	// }
 
-		message, err := getMessageOfType(MessageType(t))
-		if err != nil {
-			return nil, err
-		}
+	// 	// message, err := getMessageOfType(MessageType(t))
+	// 	// if err != nil {
+	// 	// 	return nil, err
+	// 	// }
 
-		err = message.Read(&rs)
-		if err != nil {
-			return nil, err
-		}
+	// 	// err = message.Read(&rs)
+	// 	// if err != nil {
+	// 	// 	return nil, err
+	// 	// }
 
-		c.readQueue.Enqueue(message)
-	}
+	// 	// c.readQueue.Enqueue(message)
+	// }
 
 	m, _ := c.readQueue.Dequeue()
 	return m, nil
 }
 
 func (c *tcpConn) Write(m Message) error {
-	t := m.Type()
-	ws := WriteStream{buff: c.wbuff[:]}
+	// t := m.Type()
 
-	err := ws.WriteUint16(uint16(t))()
-	if err != nil {
-		return err
-	}
+	// ws := WriteStream{buff: c.wbuff[:]}
 
-	err = m.Write(&ws)
-	if err != nil {
-		return err
-	}
+	// err := ws.WriteUint16(uint16(t))()
+	// if err != nil {
+	// 	return err
+	// }
 
-	n, err := c.conn.Write(c.wbuff[:ws.TotalWrite()])
-	if err != nil {
-		return err
-	}
+	// err = m.Write(&ws)
+	// if err != nil {
+	// 	return err
+	// }
 
-	// TODO: check if necessary
-	if n != ws.total {
-		panic("TODO: N and WS.TOTAL isn't equal")
-	}
+	// n, err := c.conn.Write(c.wbuff[:ws.TotalWrite()])
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // TODO: check if necessary
+	// if n != ws.total {
+	// 	panic("TODO: N and WS.TOTAL isn't equal")
+	// }
 
 	return nil
 }
